@@ -41,9 +41,11 @@ def capture_webcam(nombre_photos=50, delai=0.3):
             self.frame = frame.to_ndarray(format="bgr24")
             return self.frame
 
-    ctx = webrtc_streamer(
+    video = VideoCapture()
+
+    webrtc_streamer(
         key="capture",
-        video_transformer_factory=VideoCapture,
+        video_transformer_factory=lambda: video,
         media_stream_constraints={
             "video": True,
             "audio": False
@@ -57,30 +59,25 @@ def capture_webcam(nombre_photos=50, delai=0.3):
 
     while photos < nombre_photos:
 
-        if ctx.video_transformer:
-            frame = ctx.video_transformer.frame
+        if video.frame is not None:
 
-            if frame is not None:
+            image = cv2.cvtColor(
+                video.frame,
+                cv2.COLOR_BGR2RGB
+            )
 
-                image = cv2.cvtColor(
-                    frame,
-                    cv2.COLOR_BGR2RGB
-                )
+            affichage.image(
+                image,
+                caption=f"📸 Photo {photos+1}/{nombre_photos}"
+            )
 
-                affichage.image(
-                    image,
-                    caption=f"📸 Photo {photos+1}/{nombre_photos}"
-                )
+            compteur.write(
+                f"Capture automatique : {photos+1}/{nombre_photos}"
+            )
 
-                compteur.write(
-                    f"Capture automatique : {photos+1}/{nombre_photos}"
-                )
+            photos += 1
 
-                photos += 1
-
-                time.sleep(delai)
-
-    st.success("✅ Les captures sont terminées")
+            time.sleep(delai)
 if "Page" not in st.session_state :
     st.session_state.Page=1
 if "done" not in st.session_state:
