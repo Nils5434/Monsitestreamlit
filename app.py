@@ -71,10 +71,9 @@ def tpstepmoins():
 if "Page" not in st.session_state :
     st.session_state.Page=1
 if "done" not in st.session_state:
-
     st.session_state.done=False
 if "camera_start" not in st.session_state:
-    st.session_state.camera_on = False
+    st.session_state.camera_start = False
 if st.session_state.Page==1:
     chemin_logo = os.path.join(os.path.dirname(__file__), "logo.png")
 
