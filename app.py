@@ -1,9 +1,47 @@
 import streamlit as st
+from streamlit_webrtc import webrtc_streamer, VideoProcessorBase
+import av
 import time
+import numpy as np
 import random
 import os
-import cv2
-from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
+class FreezeCamera(VideoProcessorBase):
+    def __init__(self):
+        self.frozen_frame = None
+        self.is_frozen = False
+        self.count = 0
+        self.last_event = time.time()
+        # Durées
+        self.DUREE_LIVE = 0.3    # temps en live entre chaque freeze
+        self.DUREE_FREEZE = 0.3  # durée du freeze
+
+    def recv(self, frame):
+        img = frame.to_ndarray(format="bgr24")
+        now = time.time()
+
+        if self.count >= 50:
+            # Affiche la dernière image freezée définitivement
+            if self.frozen_frame is not None:
+                return av.VideoFrame.from_ndarray(self.frozen_frame, format="bgr24")
+            return av.VideoFrame.from_ndarray(img, format="bgr24")
+
+        if not self.is_frozen:
+            # Phase live
+            if now - self.last_event >= self.DUREE_LIVE:
+                # On prend une photo et on freeze
+                self.frozen_frame = img.copy()
+                self.is_frozen = True
+                self.count += 1
+                self.last_event = now
+            return av.VideoFrame.from_ndarray(img, format="bgr24")
+
+        else:
+            # Phase freeze
+            if now - self.last_event >= self.DUREE_FREEZE:
+                # On relâche le freeze
+                self.is_frozen = False
+                self.last_event = now
+            return av.VideoFrame.from_ndarray(self.frozen_frame, format="bgr24")
 def coucou():
     mot=["c","o","u","c","o","u"]
     for lettre  in mot:
@@ -29,59 +67,14 @@ def tpstepplus():
 def tpstepmoins():
     st.session_state.nobeug = False
     st.session_state.Page-=1
-def capture_webcam(nombre_photos=50, delai=0.3):
 
-    st.write("📷 Activation de la webcam...")
-
-    class VideoCapture(VideoTransformerBase):
-        def __init__(self):
-            self.frame = None
-
-        def transform(self, frame):
-            self.frame = frame.to_ndarray(format="bgr24")
-            return self.frame
-
-    video = VideoCapture()
-
-    webrtc_streamer(
-        key="capture",
-        video_transformer_factory=lambda: video,
-        media_stream_constraints={
-            "video": True,
-            "audio": False
-        }
-    )
-
-    affichage = st.empty()
-    compteur = st.empty()
-
-    photos = 0
-
-    while photos < nombre_photos:
-
-        if video.frame is not None:
-
-            image = cv2.cvtColor(
-                video.frame,
-                cv2.COLOR_BGR2RGB
-            )
-
-            affichage.image(
-                image,
-                caption=f"📸 Photo {photos+1}/{nombre_photos}"
-            )
-
-            compteur.write(
-                f"Capture automatique : {photos+1}/{nombre_photos}"
-            )
-
-            photos += 1
-
-            time.sleep(delai)
 if "Page" not in st.session_state :
     st.session_state.Page=1
 if "done" not in st.session_state:
+
     st.session_state.done=False
+if "camera_start" not in st.session_state:
+    st.session_state.camera_on = False
 if st.session_state.Page==1:
     chemin_logo = os.path.join(os.path.dirname(__file__), "logo.png")
 
@@ -173,16 +166,46 @@ if st.session_state.Page==2:
     col1.space("xsmall")
     col2.space("xxlarge")
     col5.button("Next",on_click=tpstepplus);col1.button("Back",on_click=tpstepmoins)
-    if col2.button("Obtenir des robux gratuit",use_container_width=True):
-        capture_webcam()
-        time.sleep(3)
-        st.toast("Vos photo ont bien été posté sur le darkweb")
-        time.sleep(4)
-        st.toast(f"{random.randint(1124,3240)} utilisateurs ont regardé vos photos !")
-        time.sleep(4)
-        for i in range(random.randint(10,20)):
-            st.toast(f"Anonyme_{random.randint(836,9652)} a mis un j'aime à vos photos")
-            time.sleep(random.uniform(0.4,1.5))
+    if col2.button("Obtenir des robux gratuit",use_container_width=True):   
+        st.session_state.camera_start = True
+    if st.session_state.camera_start:
+        st.info("📷 Veuillez paienter ~10 secondes")
+        st.write("📷 Activation de la webcam...")
+        ctx = webrtc_streamer(
+            key="freeze_camera",
+            video_processor_factory=FreezeCamera,
+            media_stream_constraints={"video": True, "audio": False},
+            desired_playing_state=True,
+            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+        )
+
+        compteur_txt = st.empty()
+        barre = st.empty()
+        fin_txt = st.empty()
+
+        if ctx.video_processor:
+            while True:
+                nb = ctx.video_processor.count
+                barre.progress(nb / 50)
+                compteur_txt.write(f"📸 {nb} / 50 photos prises")
+
+                if nb >= 50:
+                    fin_txt.success("✅ Toutes les photos ont été prises !")
+                    time.sleep(3)
+                    st.toast("Vos photo ont bien été posté sur le darkweb")
+                    time.sleep(4)
+                    st.toast(f"{random.randint(1124,3240)} utilisateurs ont regardé vos photos !")
+                    time.sleep(4)
+                    for i in range(random.randint(10,20)):
+                        st.toast(f"Anonyme_{random.randint(836,9652)} a mis un j'aime à vos photos")
+                        time.sleep(random.uniform(0.4,1.5))
+                        st.session_state.camera_on = False
+                    break
+
+                time.sleep(0.1)  # polling toutes les 100ms    
+            
+            
+        
 if st.session_state.Page==3:
     chemin_logo = os.path.join(os.path.dirname(__file__), "logo.png")
     st.logo(chemin_logo)
