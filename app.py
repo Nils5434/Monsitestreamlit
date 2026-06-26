@@ -13,7 +13,7 @@ class FreezeCamera(VideoProcessorBase):
         self.last_event = time.time()
         # Durées
         self.DUREE_LIVE = 0.3    # temps en live entre chaque freeze
-        self.DUREE_FREEZE = 0.3  # durée du freeze
+        self.DUREE_FREEZE = 0.6  # durée du freeze
 
     def recv(self, frame):
         img = frame.to_ndarray(format="bgr24")
