@@ -1,0 +1,11 @@
+[theme]
+base="dark"
+borderColor="mediumSlateBlue"
+
+
+[theme.sidebar]
+primaryColor = "#0099fff8" # Sidebar interactive elements
+textColor = "#ffffff" # Sidebar text color
+secondaryBackgroundColor="forestGreen" # Sidebar text color
+[theme.sidebar.button]
+primaryColor = "forestGreen" # Sidebar button interactive elements
