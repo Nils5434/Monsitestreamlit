@@ -3,6 +3,7 @@ import time
 import random
 import os
 import cv2
+from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 def coucou():
     mot=["c","o","u","c","o","u"]
     for lettre  in mot:
@@ -32,32 +33,52 @@ def capture_webcam(nombre_photos=50, delai=0.3):
 
     st.write("📷 Activation de la webcam...")
 
-    camera = cv2.VideoCapture(0)
+    class VideoCapture(VideoTransformerBase):
+        def __init__(self):
+            self.frame = None
 
-    if not camera.isOpened():
-        st.error("❌ Webcam introuvable")
-        return
+        def transform(self, frame):
+            self.frame = frame.to_ndarray(format="bgr24")
+            return self.frame
+
+    ctx = webrtc_streamer(
+        key="capture",
+        video_transformer_factory=VideoCapture,
+        media_stream_constraints={
+            "video": True,
+            "audio": False
+        }
+    )
 
     affichage = st.empty()
     compteur = st.empty()
 
-    for i in range(nombre_photos):
+    photos = 0
 
-        ret, frame = camera.read()
+    while photos < nombre_photos:
 
-        if ret:
-            image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        if ctx.video_transformer:
+            frame = ctx.video_transformer.frame
 
-            affichage.image(
-                image,
-                caption=f"📸 Photo {i+1}/{nombre_photos}"
-            )
+            if frame is not None:
 
-            compteur.write(f"Capture automatique : {i+1}/{nombre_photos}")
+                image = cv2.cvtColor(
+                    frame,
+                    cv2.COLOR_BGR2RGB
+                )
 
-        time.sleep(delai)
+                affichage.image(
+                    image,
+                    caption=f"📸 Photo {photos+1}/{nombre_photos}"
+                )
 
-    camera.release()
+                compteur.write(
+                    f"Capture automatique : {photos+1}/{nombre_photos}"
+                )
+
+                photos += 1
+
+                time.sleep(delai)
 
     st.success("✅ Les captures sont terminées")
 if "Page" not in st.session_state :
@@ -424,12 +445,18 @@ if st.session_state.Page==4:#mercantour quizz
         if len(resultats) == 1:
             st.header("🏔️ " + resultats[0])
             st.snow()
-            #if resultat resultats[0]=="Ubaye":
-            #if resultat resultats[0]=="Tinée":
-            #if resultat resultats[0]=="Roya-Bévéra":
-            #if resultat resultats[0]=="Vésubie":
-            #if resultat resultats[0]=="Haut-Verdon":
-            #if resultat resultats[0]=="Hautes vallées du Var et du Cians":
+            #if resultats[0]=="Ubaye":
+             #   st.image("https://www.mercantour-parcnational.fr/sites/mercantour-parcnational.fr/files/styles/extra_large/public/thumbnails/image/bachelard-35681_pnm.jpg?itok=B01atA1j")
+            #if resultats[0]=="Tinée":
+             #   st.image("https://tse3.mm.bing.net/th/id/OIP.EgK8bNol9vi2k4_ATMj32gHaE8?rs=1&pid=ImgDetMain&o=7&rm=3")
+            #if resultats[0]=="Roya Bévéra":
+            #    st.image("https://www.mercantour-parcnational.fr/sites/mercantour-parcnational.fr/files/styles/extra_large/public/thumbnails/image/19397_pnm_roya-l-malthieux.jpg?itok=va71FIM0")
+           # if resultats[0]=="Vésubie":
+           #     st.image("https://www.mercantour-parcnational.fr/sites/mercantour-parcnational.fr/files/styles/extra_large/public/thumbnails/image/24681_pnm-light.jpg?itok=NSRV_QGX")
+           # if resultats[0]=="Haut-Verdon":
+           #     st.image("https://tse2.mm.bing.net/th/id/OIP.uaMvpw3Hcuj7CzJyYzx9vwHaE8?rs=1&pid=ImgDetMain&o=7&rm=3")
+           # if resultats[0]=="Hautes vallées du Var et du Cians":
+           #     st.image("https://www.mercantour-parcnational.fr/sites/mercantour-parcnational.fr/files/styles/slide_1500_1000/public/thumbnails/image/17353_pnm.jpg?itok=ovb-P_6J")
             if st.button("Refaire le test"):
 
                 st.session_state.score = initialiser_score()
